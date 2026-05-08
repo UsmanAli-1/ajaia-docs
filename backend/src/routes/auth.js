@@ -2,9 +2,8 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { prisma } = require('../lib/prisma')
+const { prisma } = require('../lib/prisma');
 const { body, validationResult } = require('express-validator');
-
 
 // POST /api/auth/register
 router.post(
@@ -45,8 +44,8 @@ router.post(
         user: { id: user.id, email: user.email, name: user.name },
       });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Registration failed' });
+      console.error('Register error:', err.message);
+      res.status(500).json({ error: 'Registration failed. Database may be waking up, try again in 10 seconds.' });
     }
   }
 );
@@ -88,8 +87,8 @@ router.post(
         user: { id: user.id, email: user.email, name: user.name },
       });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Login failed' });
+      console.error('Login error:', err.message);
+      res.status(500).json({ error: 'Login failed. Database may be waking up, please try again in 10 seconds.' });
     }
   }
 );

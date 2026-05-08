@@ -54,8 +54,8 @@ export default function ShareModal({ document, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div>
@@ -78,12 +78,12 @@ export default function ShareModal({ document, onClose }) {
               placeholder="Enter email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-0"
             />
             <button
               type="submit"
               disabled={loading}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shrink-0"
             >
               {loading ? 'Sharing...' : 'Share'}
             </button>
@@ -113,13 +113,13 @@ export default function ShareModal({ document, onClose }) {
                     key={share.id}
                     className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg"
                   >
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{share.user.name}</p>
-                      <p className="text-xs text-gray-500">{share.user.email}</p>
+                    <div className="min-w-0 mr-2">
+                      <p className="text-sm font-medium text-gray-800 truncate">{share.user.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{share.user.email}</p>
                     </div>
                     <button
                       onClick={() => handleRemove(share.user.id)}
-                      className="text-xs text-red-500 hover:text-red-700 hover:underline"
+                      className="text-xs text-red-500 hover:text-red-700 hover:underline shrink-0"
                     >
                       Remove
                     </button>

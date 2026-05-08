@@ -8,13 +8,12 @@ import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 import ShareModal from '../components/ShareModal'
 
-// ── Toolbar button helper ──────────────────────────────────────────────────
 function ToolbarButton({ onClick, active, title, children }) {
   return (
     <button
       onMouseDown={(e) => { e.preventDefault(); onClick() }}
       title={title}
-      className={`p-1.5 rounded text-sm font-medium transition-colors ${
+      className={`p-1.5 rounded text-sm font-medium transition-colors shrink-0 ${
         active
           ? 'bg-blue-100 text-blue-700'
           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -25,9 +24,8 @@ function ToolbarButton({ onClick, active, title, children }) {
   )
 }
 
-// ── Divider ────────────────────────────────────────────────────────────────
 function Divider() {
-  return <div className="w-px h-5 bg-gray-300 mx-1" />
+  return <div className="w-px h-5 bg-gray-300 mx-1 shrink-0" />
 }
 
 export default function Editor() {
@@ -39,13 +37,12 @@ export default function Editor() {
   const [title, setTitle] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [saveStatus, setSaveStatus] = useState('saved') // 'saved' | 'unsaved' | 'saving'
+  const [saveStatus, setSaveStatus] = useState('saved')
   const [error, setError] = useState('')
   const [showShare, setShowShare] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const saveTimer = useRef(null)
 
-  // ── Tiptap editor ──────────────────────────────────────────────────────
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -55,7 +52,6 @@ export default function Editor() {
     content: '',
     onUpdate: () => {
       setSaveStatus('unsaved')
-      // Auto-save after 2 seconds of inactivity
       if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => {
         handleSave()
@@ -63,7 +59,6 @@ export default function Editor() {
     },
   })
 
-  // ── Load document ──────────────────────────────────────────────────────
   useEffect(() => {
     const fetchDoc = async () => {
       try {
@@ -73,7 +68,6 @@ export default function Editor() {
         setIsOwner(res.data.isOwner)
 
         if (editor && res.data.content) {
-          // content can be {} (empty) or a full Tiptap JSON doc
           const content = res.data.content
           const isEmpty =
             !content ||
@@ -93,7 +87,6 @@ export default function Editor() {
     if (editor) fetchDoc()
   }, [id, editor])
 
-  // ── Save ───────────────────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
     if (!editor) return
     setSaving(true)
@@ -111,7 +104,6 @@ export default function Editor() {
     }
   }, [editor, id, title])
 
-  // Save when title changes
   useEffect(() => {
     if (!document) return
     if (title === document.title) return
@@ -120,14 +112,12 @@ export default function Editor() {
     saveTimer.current = setTimeout(handleSave, 1500)
   }, [title])
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
     }
   }, [])
 
-  // ── Keyboard shortcut Ctrl+S ───────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -150,7 +140,7 @@ export default function Editor() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
+        <div className="text-center px-4">
           <p className="text-red-600 font-medium mb-3">{error}</p>
           <button
             onClick={() => navigate('/dashboard')}
@@ -165,12 +155,12 @@ export default function Editor() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-4">
+      {/* Top bar */}
+      <header className="bg-white border-b border-gray-200 px-2 sm:px-4 py-2 flex items-center gap-1 sm:gap-3 overflow-hidden">
         {/* Back */}
         <button
           onClick={() => navigate('/dashboard')}
-          className="text-gray-400 hover:text-gray-700 transition-colors p-1 rounded"
+          className="text-gray-400 hover:text-gray-700 transition-colors p-1 rounded shrink-0"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -178,7 +168,7 @@ export default function Editor() {
         </button>
 
         {/* Logo */}
-        <div className="flex items-center gap-1.5">
+        <div className="shrink-0">
           <div className="w-7 h-7 bg-blue-600 rounded-md flex items-center justify-center">
             <span className="text-white font-bold text-xs">A</span>
           </div>
@@ -191,12 +181,12 @@ export default function Editor() {
           onChange={(e) => setTitle(e.target.value)}
           onBlur={handleSave}
           placeholder="Untitled Document"
-          className="flex-1 text-base font-medium text-gray-900 bg-transparent focus:outline-none focus:border-b-2 focus:border-blue-500 pb-0.5 min-w-0"
+          className="flex-1 text-sm sm:text-base font-medium text-gray-900 bg-transparent focus:outline-none focus:border-b-2 focus:border-blue-500 pb-0.5 min-w-0"
         />
 
-        {/* Save status */}
+        {/* Save status — hidden on mobile */}
         <span
-          className={`text-xs shrink-0 ${
+          className={`text-xs shrink-0 hidden sm:block ${
             saveStatus === 'saved'
               ? 'text-green-600'
               : saveStatus === 'saving'
@@ -213,7 +203,7 @@ export default function Editor() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="text-sm px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50"
+          className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50 shrink-0"
         >
           Save
         </button>
@@ -222,25 +212,25 @@ export default function Editor() {
         {isOwner && (
           <button
             onClick={() => setShowShare(true)}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shrink-0"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
-            Share
+            <span className="hidden sm:inline">Share</span>
           </button>
         )}
 
-        {/* User */}
-        <span className="text-xs text-gray-400 shrink-0 hidden sm:block">
+        {/* User — desktop only */}
+        <span className="text-xs text-gray-400 shrink-0 hidden lg:block">
           {user?.name}
         </span>
       </header>
 
-      {/* ── Formatting toolbar ───────────────────────────────────────────── */}
+      {/* Formatting toolbar — horizontally scrollable on mobile */}
       {editor && (
-        <div className="bg-white border-b border-gray-200 px-4 py-1.5 flex items-center gap-0.5 flex-wrap">
-          {/* Text style */}
+        <div className="bg-white border-b border-gray-200 px-2 py-1.5 flex items-center gap-0.5 overflow-x-auto flex-nowrap">
+          {/* Text style dropdown */}
           <select
             onChange={(e) => {
               const val = e.target.value
@@ -259,7 +249,7 @@ export default function Editor() {
                 ? '3'
                 : 'paragraph'
             }
-            className="text-sm border border-gray-200 rounded px-2 py-1 mr-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="text-sm border border-gray-200 rounded px-1 sm:px-2 py-1 mr-1 focus:outline-none focus:ring-1 focus:ring-blue-500 shrink-0"
           >
             <option value="paragraph">Normal</option>
             <option value="1">Heading 1</option>
@@ -269,7 +259,6 @@ export default function Editor() {
 
           <Divider />
 
-          {/* Bold */}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBold().run()}
             active={editor.isActive('bold')}
@@ -278,7 +267,6 @@ export default function Editor() {
             <strong>B</strong>
           </ToolbarButton>
 
-          {/* Italic */}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleItalic().run()}
             active={editor.isActive('italic')}
@@ -287,7 +275,6 @@ export default function Editor() {
             <em>I</em>
           </ToolbarButton>
 
-          {/* Underline */}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleUnderline().run()}
             active={editor.isActive('underline')}
@@ -298,7 +285,6 @@ export default function Editor() {
 
           <Divider />
 
-          {/* Bullet list */}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             active={editor.isActive('bulletList')}
@@ -309,7 +295,6 @@ export default function Editor() {
             </svg>
           </ToolbarButton>
 
-          {/* Ordered list */}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             active={editor.isActive('orderedList')}
@@ -322,7 +307,6 @@ export default function Editor() {
 
           <Divider />
 
-          {/* Blockquote */}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
             active={editor.isActive('blockquote')}
@@ -333,7 +317,6 @@ export default function Editor() {
             </svg>
           </ToolbarButton>
 
-          {/* Code */}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleCode().run()}
             active={editor.isActive('code')}
@@ -346,7 +329,6 @@ export default function Editor() {
 
           <Divider />
 
-          {/* Undo / Redo */}
           <ToolbarButton
             onClick={() => editor.chain().focus().undo().run()}
             active={false}
@@ -371,9 +353,9 @@ export default function Editor() {
         </div>
       )}
 
-      {/* ── Editor area ──────────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto py-10 px-4">
-        <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 min-h-[70vh] p-10">
+      {/* Editor area */}
+      <main className="flex-1 overflow-y-auto py-4 sm:py-10 px-2 sm:px-4">
+        <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 min-h-[70vh] p-4 sm:p-10">
           <EditorContent
             editor={editor}
             className="prose prose-sm sm:prose max-w-none focus:outline-none min-h-[60vh]"
@@ -381,7 +363,7 @@ export default function Editor() {
         </div>
       </main>
 
-      {/* ── Share modal ──────────────────────────────────────────────────── */}
+      {/* Share modal */}
       {showShare && document && (
         <ShareModal document={document} onClose={() => setShowShare(false)} />
       )}
