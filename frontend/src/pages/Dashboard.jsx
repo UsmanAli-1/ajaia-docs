@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import Navbar from '../components/Navbar'
+import {
+  FilePlus2, Upload, FileText, Users, MoreHorizontal,
+  Pencil, Trash2, Clock, Search, ChevronRight
+} from 'lucide-react'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -15,10 +19,19 @@ export default function Dashboard() {
   const [uploadError, setUploadError] = useState('')
   const [renamingId, setRenamingId] = useState(null)
   const [renameValue, setRenameValue] = useState('')
+  const [menuOpenId, setMenuOpenId] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const fileInputRef = useRef(null)
 
   useEffect(() => {
     fetchAll()
+  }, [])
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handler = () => setMenuOpenId(null)
+    window.addEventListener('click', handler)
+    return () => window.removeEventListener('click', handler)
   }, [])
 
   const fetchAll = async () => {
@@ -78,6 +91,7 @@ export default function Dashboard() {
 
   const handleDelete = async (id, e) => {
     e.stopPropagation()
+    setMenuOpenId(null)
     if (!window.confirm('Delete this document?')) return
     try {
       await api.delete(`/api/documents/${id}`)
@@ -89,12 +103,13 @@ export default function Dashboard() {
 
   const startRename = (doc, e) => {
     e.stopPropagation()
+    setMenuOpenId(null)
     setRenamingId(doc.id)
     setRenameValue(doc.title)
   }
 
   const handleRename = async (id) => {
-    if (!renameValue.trim()) return
+    if (!renameValue.trim()) { setRenamingId(null); return }
     try {
       await api.patch(`/api/documents/${id}/rename`, { title: renameValue.trim() })
       setMyDocs((prev) =>
@@ -108,202 +123,286 @@ export default function Dashboard() {
   }
 
   const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+    const d = new Date(dateStr)
+    const now = new Date()
+    const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24))
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays} days ago`
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  const filterDocs = (docs) => {
+    if (!searchQuery.trim()) return docs
+    return docs.filter(d => d.title.toLowerCase().includes(searchQuery.toLowerCase()))
   }
 
   const DocCard = ({ doc, isShared = false }) => (
     <div
       onClick={() => navigate(`/editor/${doc.id}`)}
-      className="group bg-white border border-gray-200 rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all"
+      className="doc-card group bg-white border border-gray-100 rounded-xl cursor-pointer overflow-hidden relative"
+      style={{ boxShadow: 'var(--shadow-card)' }}
     >
-      {/* Document icon */}
-      <div className="w-10 h-12 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-center mb-3">
-        <svg className="w-5 h-6 text-blue-500" fill="currentColor" viewBox="0 0 20 24">
-          <path d="M13 0H3C1.9 0 1 .9 1 2v20c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6l-6-6zm-1 7V1.5L17.5 7H12z" />
-        </svg>
+      {/* Card preview area */}
+      <div className="h-32 bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center border-b border-gray-50 relative overflow-hidden">
+        {/* Faint lines like a doc */}
+        <div className="absolute inset-4 space-y-1.5 opacity-20">
+          {[90, 75, 85, 60, 70].map((w, i) => (
+            <div key={i} className={`h-1.5 rounded-full bg-gray-400`} style={{ width: `${w}%` }} />
+          ))}
+        </div>
+        <FileText className="w-8 h-8 text-blue-300 relative z-10" strokeWidth={1.5} />
+
+        {/* Shared badge */}
+        {isShared && (
+          <span className="absolute top-2 right-2 bg-emerald-100 text-emerald-700 text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+            <Users size={9} />
+            Shared
+          </span>
+        )}
+
+        {/* 3-dot menu — owned only */}
+        {!isShared && (
+          <div
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === doc.id ? null : doc.id) }}
+              className="w-6 h-6 bg-white border border-gray-200 rounded-md flex items-center justify-center hover:bg-gray-50 shadow-sm"
+            >
+              <MoreHorizontal size={12} className="text-gray-500" />
+            </button>
+            {menuOpenId === doc.id && (
+              <div className="absolute right-0 top-7 bg-white border border-gray-100 rounded-lg shadow-xl z-50 w-40 py-1 overflow-hidden">
+                <button
+                  onClick={(e) => startRename(doc, e)}
+                  className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <Pencil size={13} className="text-gray-400" />
+                  Rename
+                </button>
+                <button
+                  onClick={(e) => handleDelete(doc.id, e)}
+                  className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 size={13} className="text-red-400" />
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Title */}
-      {renamingId === doc.id ? (
-        <input
-          autoFocus
-          value={renameValue}
-          onChange={(e) => setRenameValue(e.target.value)}
-          onBlur={() => handleRename(doc.id)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleRename(doc.id)
-            if (e.key === 'Escape') setRenamingId(null)
-          }}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full border border-blue-400 rounded px-2 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      ) : (
-        <p className="text-sm font-medium text-gray-900 truncate mb-1">{doc.title}</p>
-      )}
+      {/* Card body */}
+      <div className="p-3.5">
+        {renamingId === doc.id ? (
+          <input
+            autoFocus
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onBlur={() => handleRename(doc.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRename(doc.id)
+              if (e.key === 'Escape') setRenamingId(null)
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full border border-blue-400 rounded-md px-2 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-300 bg-blue-50"
+          />
+        ) : (
+          <p className="text-sm font-semibold text-gray-900 truncate leading-snug">{doc.title || 'Untitled'}</p>
+        )}
 
-      <p className="text-xs text-gray-400">
-        {isShared ? `Shared by ${doc.owner?.name}` : `Edited ${formatDate(doc.updatedAt)}`}
-      </p>
-
-      {/* Actions — only on owned docs */}
-      {!isShared && (
-        <div className="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={(e) => startRename(doc, e)}
-            className="text-xs text-gray-500 hover:text-blue-600 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-          >
-            Rename
-          </button>
-          <button
-            onClick={(e) => handleDelete(doc.id, e)}
-            className="text-xs text-gray-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors"
-          >
-            Delete
-          </button>
+        <div className="flex items-center gap-1 mt-1.5">
+          <Clock size={10} className="text-gray-300 shrink-0" />
+          <p className="text-xs text-gray-400 truncate">
+            {isShared ? `by ${doc.owner?.name}` : formatDate(doc.updatedAt)}
+          </p>
         </div>
-      )}
+      </div>
     </div>
   )
 
+  const currentDocs = filterDocs(activeTab === 'mine' ? myDocs : sharedDocs)
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: 'var(--surface)' }}>
       <Navbar />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Upload button */}
-            <div className="relative">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".txt,.md"
-                onChange={handleUpload}
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors bg-white"
-              >
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                <span>
-                  {uploading ? 'Uploading...' : (
-                    <><span className="hidden sm:inline">Upload </span>.txt / .md</>
-                  )}
-                </span>
-              </button>
-            </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
 
-            {/* New doc button */}
+        {/* ── Page header ── */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Documents</h1>
+            <p className="text-sm text-gray-400 mt-0.5">
+              {myDocs.length} document{myDocs.length !== 1 ? 's' : ''} · {sharedDocs.length} shared
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,.md"
+              onChange={handleUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-2 px-3.5 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 font-medium hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 transition-all shadow-sm"
+            >
+              <Upload size={14} />
+              <span className="hidden sm:inline">{uploading ? 'Uploading…' : 'Upload'}</span>
+            </button>
+
             <button
               onClick={handleCreate}
-              className="flex items-center gap-2 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm hover:shadow-md"
             >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span className="hidden xs:inline">New Document</span>
-              <span className="xs:hidden">New Document</span>
+              <FilePlus2 size={15} />
+              New Document
             </button>
           </div>
         </div>
 
-        {/* Errors */}
+        {/* ── Error banners ── */}
         {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-            {error}
+          <div className="mb-5 bg-red-50 border border-red-100 text-red-700 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
+            <span className="font-medium">{error}</span>
           </div>
         )}
         {uploadError && (
-          <div className="mb-4 bg-orange-50 border border-orange-200 text-orange-700 text-sm px-4 py-3 rounded-lg">
+          <div className="mb-5 bg-amber-50 border border-amber-100 text-amber-700 text-sm px-4 py-3 rounded-xl">
             {uploadError}
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-1 bg-gray-200 p-1 rounded-lg w-fit mb-6">
-          <button
-            onClick={() => setActiveTab('mine')}
-            className={`px-3 sm:px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'mine'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            My Documents
-            {myDocs.length > 0 && (
-              <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full">
-                {myDocs.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('shared')}
-            className={`px-3 sm:px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'shared'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Shared With Me
-            {sharedDocs.length > 0 && (
-              <span className="ml-2 bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded-full">
-                {sharedDocs.length}
-              </span>
-            )}
-          </button>
+        {/* ── Search ── */}
+        <div className="relative mb-6 max-w-xs">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search documents…"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-8 pr-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder:text-gray-300 shadow-sm"
+          />
         </div>
 
-        {/* Content */}
+        {/* ── Tabs ── */}
+        <div className="flex gap-1 bg-gray-100/80 p-1 rounded-xl w-fit mb-7 border border-gray-200/60">
+          {[
+            { key: 'mine', label: 'My Documents', count: myDocs.length },
+            { key: 'shared', label: 'Shared with me', count: sharedDocs.length },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`
+                flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all
+                ${activeTab === tab.key
+                  ? 'bg-white text-gray-900 shadow-sm border border-gray-200/80'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+                }
+              `}
+            >
+              {tab.key === 'mine' ? <FileText size={13} /> : <Users size={13} />}
+              {tab.label}
+              {tab.count > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                  activeTab === tab.key
+                    ? tab.key === 'mine' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
+                    : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Content ── */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-          </div>
-        ) : activeTab === 'mine' ? (
-          myDocs.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl overflow-hidden border border-gray-100" style={{ boxShadow: 'var(--shadow-card)' }}>
+                <div className="h-32 bg-gray-100 animate-pulse" />
+                <div className="p-3.5 space-y-2">
+                  <div className="h-3 bg-gray-100 rounded-full animate-pulse w-4/5" />
+                  <div className="h-2.5 bg-gray-50 rounded-full animate-pulse w-1/2" />
+                </div>
               </div>
-              <p className="text-gray-500 font-medium">No documents yet</p>
-              <p className="text-gray-400 text-sm mt-1">Create your first document to get started</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {myDocs.map((doc) => (
-                <DocCard key={doc.id} doc={doc} />
-              ))}
-            </div>
-          )
-        ) : sharedDocs.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <p className="text-gray-500 font-medium">Nothing shared with you yet</p>
-            <p className="text-gray-400 text-sm mt-1">Documents shared by others will appear here</p>
+            ))}
           </div>
+        ) : currentDocs.length === 0 ? (
+          <EmptyState
+            isShared={activeTab === 'shared'}
+            hasSearch={!!searchQuery}
+            onCreate={handleCreate}
+          />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {sharedDocs.map((doc) => (
-              <DocCard key={doc.id} doc={doc} isShared />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {/* New doc quick-create card */}
+            {activeTab === 'mine' && !searchQuery && (
+              <button
+                onClick={handleCreate}
+                className="doc-card border-2 border-dashed border-gray-200 rounded-xl h-[220px] flex flex-col items-center justify-center gap-2.5 text-gray-400 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/40 transition-all bg-white/40 cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                  <FilePlus2 size={18} />
+                </div>
+                <span className="text-xs font-semibold">New Document</span>
+              </button>
+            )}
+            {currentDocs.map((doc) => (
+              <DocCard key={doc.id} doc={doc} isShared={activeTab === 'shared'} />
             ))}
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function EmptyState({ isShared, hasSearch, onCreate }) {
+  if (hasSearch) return (
+    <div className="text-center py-20">
+      <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-gray-100">
+        <Search size={22} className="text-gray-300" />
+      </div>
+      <p className="text-gray-500 font-semibold">No results found</p>
+      <p className="text-gray-400 text-sm mt-1">Try a different search term</p>
+    </div>
+  )
+
+  if (isShared) return (
+    <div className="text-center py-20">
+      <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-gray-100">
+        <Users size={22} className="text-gray-300" />
+      </div>
+      <p className="text-gray-700 font-semibold">Nothing shared yet</p>
+      <p className="text-gray-400 text-sm mt-1">Documents that others share with you will appear here</p>
+    </div>
+  )
+
+  return (
+    <div className="text-center py-20">
+      <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
+        <FileText size={22} className="text-blue-400" />
+      </div>
+      <p className="text-gray-700 font-semibold">No documents yet</p>
+      <p className="text-gray-400 text-sm mt-1 mb-5">Create your first document to get started</p>
+      <button
+        onClick={onCreate}
+        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-md"
+      >
+        <FilePlus2 size={15} />
+        Create Document
+        <ChevronRight size={14} />
+      </button>
     </div>
   )
 }
